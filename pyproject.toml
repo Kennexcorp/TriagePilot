@@ -1,7 +1,42 @@
 [project]
 name = "triagepilot"
 version = "0.1.0"
-description = "Add your description here"
+description = "Routes inbound support tickets by emotional register, not just category, using a locally-run LangGraph agent so no ticket content ever leaves the device."
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "langchain-ollama>=1.1.0",
+    "langgraph>=1.2.10",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.0",
+]
+
+[tool.ruff]
+# target-version is inferred from project.requires-python.
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, import sorting, pyupgrade, bugbear.
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Unknown markers fail rather than silently registering as a typo'd no-op.
+addopts = "--strict-markers"
+markers = [
+    "eval: runs the labeled eval set against a live Ollama model (slow, excluded from CI)",
+]
+
+[tool.coverage.run]
+source = ["graph", "config.py"]
+
+[tool.coverage.report]
+# The gate from DESIGN.md Phase 5. CI invokes it via `pytest --cov`.
+fail_under = 80
+show_missing = true

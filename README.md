@@ -4,14 +4,17 @@
 
 ![CI](https://img.shields.io/badge/CI-pending-lightgrey)
 ![Coverage](https://img.shields.io/badge/coverage-pending-lightgrey)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![Python](https://img.shields.io/badge/python-3.13%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
-![Demo](docs/demo.gif)
 <!-- ⚠️ Record once P1 CLI loop exists: a 15–30s GIF showing a frustrated ticket
-     routed to the Care agent, then a technical ticket routed to Resolution. -->
+     routed to the Care agent, then a technical ticket routed to Resolution.
+     Restore the embed below once docs/demo.gif exists; until then it renders
+     as a broken image on GitHub.
+![Demo](docs/demo.gif)
+-->
 
 ## What it does
 
@@ -39,11 +42,11 @@ git clone https://github.com/your-username/triagepilot.git
 cd triagepilot
 uv venv && source .venv/bin/activate
 uv sync
-ollama pull llama3.2
+ollama pull llama3.2:3b
 uv run main.py
 ```
 
-First run pulls `llama3.2:3b` if you haven't already (~2GB download) — after that, everything is local and offline.
+The `ollama pull` step is a one-time ~2GB download; after that, everything is local and offline. `uv sync` creates the virtualenv itself, so the `uv venv` step is only needed if you want an activated shell.
 
 ### Path B — Docker (one command, fully reproducible)
 
@@ -63,7 +66,7 @@ Copy `.env.example` → `.env`:
 
 | Variable | Default | Notes |
 |---|---|---|
-| `OLLAMA_MODEL` | `llama3.2` | Swap to `qwen2.5` for higher-quality (slower) classification — see Results for the trade-off once benchmarked. |
+| `OLLAMA_MODEL` | `llama3.2:3b` | ⚠️ Provisional default, locked once the `llama3.2:3b` vs `qwen2.5:7b` benchmark runs (P1.5). Swap to `qwen2.5:7b` for higher-quality (slower) classification; see Results for the measured trade-off. |
 | `OLLAMA_HOST` | `http://localhost:11434` | Change to `http://ollama:11434` when running via Docker Compose. |
 | `REFUND_APPROVAL_THRESHOLD_USD` | `50` | Reserved — takes effect once tool-calling + human-in-the-loop approval ship (see Roadmap). No refund actions are taken in the current MVP. |
 | `LOG_LEVEL` | `info` | Set to `debug` to see full classifier rationale output. |
@@ -82,7 +85,7 @@ Copy `.env.example` → `.env`:
 | End-to-end latency, classify + respond (M-series / 8-core CPU, `llama3.2:3b`) | **⚠️ pending — target ≤ 4s** |
 | Care agent: acknowledges sentiment before resolution content (manual review, N=20) | **⚠️ pending** |
 | Test coverage (graph nodes + classifier logic) | **⚠️ pending — target ≥ 80%** |
-| Model comparison: `llama3.2:3b` vs `qwen2.5:7b` (accuracy + latency) | see [docs/MODEL_EVAL.md](docs/MODEL_EVAL.md) *(to be created in P2)* |
+| Model comparison: `llama3.2:3b` vs `qwen2.5:7b` (accuracy + latency) | see [docs/MODEL_EVAL.md](docs/MODEL_EVAL.md) *(to be created in P1.5)* |
 
 ---
 
@@ -127,8 +130,8 @@ Full trade-off analysis, requirements, and risk matrix: [docs/DESIGN.md](docs/DE
 | Symptom | Fix |
 |---|---|
 | `ConnectionError` / `httpx.ConnectError` on startup | Ollama isn't running. Start it with `ollama serve`, or confirm `OLLAMA_HOST` in `.env` points to the right address. |
-| `model 'llama3.2' not found` | Run `ollama pull llama3.2` before starting TriagePilot. |
-| Classifier raises a validation error on the Pydantic schema | The model returned an unexpected structure — this triggers one automatic retry; if it persists, try `OLLAMA_MODEL=qwen2.5`, which tends to follow structured-output instructions more reliably. |
+| `model 'llama3.2:3b' not found` | Run `ollama pull llama3.2:3b` before starting TriagePilot. |
+| Classifier raises a validation error on the Pydantic schema | The model returned an unexpected structure — this triggers one automatic retry; if it persists, try `OLLAMA_MODEL=qwen2.5:7b`, which tends to follow structured-output instructions more reliably. |
 | Response feels slow (>10s) on CPU-only hardware | Expected on larger models; switch `OLLAMA_MODEL` to `llama3.2:3b` (the smallest variant) rather than a 7B+ model if latency matters more than nuance. |
 
 ---
@@ -149,6 +152,7 @@ Full trade-off analysis, requirements, and risk matrix: [docs/DESIGN.md](docs/DE
 ```
 triagepilot/
 ├── main.py                  # CLI entrypoint / interactive loop
+├── config.py                # pydantic-settings BaseSettings
 ├── graph/
 │   ├── state.py             # TypedDict state schema
 │   ├── nodes.py              # classifier, care_agent, resolution_agent
@@ -159,9 +163,11 @@ triagepilot/
 │   └── fixtures/eval_set.json
 ├── docs/
 │   ├── DESIGN.md             # full design doc — requirements, architecture, risk matrix
+│   ├── TODO.md               # phased implementation checklist
 │   └── demo.gif
 ├── .github/workflows/ci.yml
 ├── .env.example
+├── LICENSE
 └── pyproject.toml
 ```
 

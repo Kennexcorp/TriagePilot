@@ -9,3 +9,12 @@ wheels/
 # Virtual environments
 .venv
 CLAUDE.md
+
+# Local config — .env.example is committed, .env is not
+.env
+
+# Test and coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/

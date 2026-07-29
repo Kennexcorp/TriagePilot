@@ -59,7 +59,7 @@ Cutting memory, tools, HITL, and handoff keeps the MVP shippable in ~2 weeks by 
 | **Reliability** | System degrades gracefully (returns a clear fallback message, never an unhandled crash) if Ollama is unreachable or returns malformed structured output; at least 1 automatic retry before falling back. |
 | **Output quality** | Classification accuracy ≥ 90% on a held-out, labeled eval set of N=50 tickets spanning clearly-emotional, clearly-technical, and ambiguous/mixed cases. |
 | **Safety / Action-risk** | MVP agents are advisory-only — no response may claim a refund, credit, or account change has been made. Once tool-calling ships, any action ≥ $50 must be flagged for human approval before execution, not auto-applied. |
-| **Portability** | Runs on macOS, Linux, and WSL with Python 3.10+; installable in ≤5 commands via `uv`. |
+| **Portability** | Runs on macOS, Linux, and WSL with Python 3.13+; installable in ≤5 commands via `uv`. |
 | **Testability** | ≥80% unit test coverage on graph nodes and classifier logic; the labeled eval set is a versioned fixture (`tests/fixtures/eval_set.json`), never regenerated ad hoc. |
 
 ---
@@ -95,6 +95,7 @@ Care Agent   Resolution Agent    (each: ChatOllama + role-specific system prompt
 | **Structured output** | LangChain `with_structured_output` + Pydantic | Raw Ollama HTTP client with manual JSON parsing/regex | Removes an entire class of brittle parsing bugs; accepted trade-off: tied to LangChain's abstraction versioning and its occasional breaking changes across releases. |
 | **Graph topology** | Single classifier + two leaf agents, no supervisor | Supervisor/orchestrator pattern with re-routing; single mega-agent with tool access | Simplest topology that proves structured classification + conditional routing end-to-end before adding complexity; accepted trade-off: cannot re-route mid-conversation if tone shifts — explicitly deferred to the Roadmap's supervisor item, not silently ignored. |
 | **UI** | CLI loop | Web UI (Streamlit/FastAPI+React), Slack bot | Fastest way to validate the core routing loop before investing in a UI layer; accepted trade-off: not demo-friendly for non-technical stakeholders — flagged as a v2 candidate. |
+| **Configuration** | `pydantic-settings` `BaseSettings` reading `.env` | Raw `python-dotenv` + `os.getenv`, hand-rolled config module, TOML/YAML config file | Validates config at the boundary where it enters, which matters because support leads edit these values and `REFUND_APPROVAL_THRESHOLD_USD` is numeric, so a typo fails at startup naming the field rather than at first use with a `TypeError`; accepted trade-off: one more dependency than `os.getenv`, though it reuses Pydantic which the classifier already requires. |
 | **Packaging & distribution** | `uv` + local Python entrypoint (primary); Docker Compose with an Ollama sidecar (secondary) | pip+venv, Poetry, PyPI package, hosted SaaS | Matches the audience (a developer evaluating or extending the code), not an end-user product; accepted trade-off: no one-click install for a non-technical support lead yet. |
 
 ### Classifier Design (core mechanism)
@@ -116,8 +117,10 @@ Care Agent   Resolution Agent    (each: ChatOllama + role-specific system prompt
 
 | Phase | Deliverable | Target |
 |---|---|---|
+| **P0 — Foundations** | Dependencies pinned and installed; `ruff`/`pytest` config; `.env.example`; `LICENSE` | 0.5 day |
 | **P1 — Core Engine** | Classifier + router + Care/Resolution agent nodes + CLI loop; unit tests on classifier logic (mocked LLM) | 1 week |
-| **P2 — Integration & Hardening** | 50-ticket labeled eval set + measured accuracy; retry/fallback error handling; `.env.example` config | 1 week |
+| **P1.5 — Eval set & model benchmark** | 50-ticket labeled eval set fixture; `llama3.2:3b` vs `qwen2.5:7b` accuracy + latency comparison; default model locked in `.env.example` | 2 days |
+| **P2 — Integration & Hardening** | Measured accuracy against the guardrail; retry/fallback error handling; Docker Compose | 1 week |
 | **P3 — Hardening & Ship** | GitHub Actions CI (lint + test + coverage gate); README case study with measured Results table; demo GIF; troubleshooting table | 3–4 days |
 
 ### Risk Matrix
@@ -138,6 +141,7 @@ Care Agent   Resolution Agent    (each: ChatOllama + role-specific system prompt
   ```
   triagepilot/
   ├── main.py                  # CLI entrypoint / interactive loop
+  ├── config.py                # pydantic-settings BaseSettings
   ├── graph/
   │   ├── state.py             # TypedDict state schema
   │   ├── nodes.py              # classifier, care_agent, resolution_agent
@@ -148,9 +152,11 @@ Care Agent   Resolution Agent    (each: ChatOllama + role-specific system prompt
   │   └── fixtures/eval_set.json
   ├── docs/
   │   ├── DESIGN.md
+  │   ├── TODO.md               # phased implementation checklist
   │   └── demo.gif
   ├── .github/workflows/ci.yml
   ├── .env.example
+  ├── LICENSE
   └── pyproject.toml
   ```
 - **Git hygiene:** Conventional commits — e.g. `feat: add ticket classifier node with Pydantic schema`, `fix: retry on malformed structured output`, `test: add 50-ticket labeled eval set`.
@@ -173,15 +179,23 @@ Care Agent   Resolution Agent    (each: ChatOllama + role-specific system prompt
 
 ## Appendix: Dependency Shortlist
 
+Versions are the latest stable releases as of 2026-07-29, resolved by `uv add`. All of them support Python 3.10+, so the project's `>=3.13` floor is a deliberate choice rather than one forced by a dependency.
+
 ```
-langgraph
-langchain-ollama
-pydantic
-python-dotenv
-pytest          # test framework
-pytest-cov      # coverage gate
-ruff            # linter
+langgraph>=1.2.10          # StateGraph, conditional edges
+langchain-ollama>=1.1.0    # ChatOllama
+pydantic>=2.13.4           # classifier schema
+pydantic-settings>=2.14.2  # typed .env config
+# dev group
+pytest>=9.1.1              # test framework
+pytest-cov>=7.1.0          # coverage gate
+ruff>=0.16.0               # linter + formatter
 # system: Ollama daemon (https://ollama.com) must be installed and running locally
 ```
 
-**Open questions to resolve before P1:** Default model choice — benchmark `llama3.2:3b` vs `qwen2.5:7b` on the 50-ticket eval set (accuracy + latency on target hardware) and record the comparison in the case study before locking the default in `.env.example`.
+**A note on LangChain 1.x.** LangChain and LangGraph reached 1.0 after this document was first drafted. The three APIs this architecture depends on (`StateGraph` over a `TypedDict`, `add_conditional_edges`, and `with_structured_output` over a Pydantic model) all survive the major version unchanged, so no rework is needed. Two 1.x details do affect the implementation:
+
+- Message classes import from `langchain.messages`, not `langchain_core.messages`.
+- `with_structured_output` accepts `include_raw=True`, which returns `{"raw", "parsed", "parsing_error"}` instead of raising on a malformed response. The Reliability guardrail's retry-then-fallback path is built on that branch rather than on `try/except`, which keeps the raw response available for the human-review flag.
+
+**Open questions resolved:** Default model choice is no longer deferred to P2. Benchmarking `llama3.2:3b` vs `qwen2.5:7b` on the eval set (accuracy + latency on target hardware) is an early milestone (see `docs/TODO.md`, P1.5), because the `.env.example` default, the ≤4s latency guardrail, and the README Results table all depend on its outcome. The comparison is recorded in `docs/MODEL_EVAL.md`.
