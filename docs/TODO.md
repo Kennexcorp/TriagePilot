@@ -22,19 +22,23 @@ Phases mirror the milestone tracker in [DESIGN.md](DESIGN.md). Rationale, requir
 
 **Done when:** `uv run main.py` classifies a typed ticket and prints a tone-matched response, and `uv run pytest` passes with `ChatOllama` mocked throughout.
 
+- [x] `pyproject.toml`: add `pythonpath = ["."]` to `[tool.pytest.ini_options]`, without which `uv run pytest` cannot import `graph` or `config` (confirmed `ModuleNotFoundError`)
 - [ ] `config.py`: `pydantic-settings` `BaseSettings` reading `.env`, with `REFUND_APPROVAL_THRESHOLD_USD` typed numeric and `OLLAMA_HOST` validated as a URL. Done when an invalid value fails at import with a named field, not at first use.
-- [ ] `graph/state.py`: `TypedDict` state carrying `ticket_text`, `ticket_type`, `rationale`, `response`. Native `typing.TypedDict`; no `typing_extensions` on 3.13.
-- [ ] `graph/nodes.py` → `TicketClassification` Pydantic model: `ticket_type: Literal["de-escalation", "resolution"]` and `rationale: str` (≤20 words), both with `Field(description=...)`
+- [ ] `graph/__init__.py`: present, so `graph` is a regular package rather than a namespace package
+- [ ] `graph/schemas.py`: `TicketType = Literal["de-escalation", "resolution"]` declared once here, plus `TicketClassification` Pydantic model with `ticket_type: TicketType` and `rationale: str` (≤20 words), both carrying `Field(description=...)`
+- [ ] `graph/state.py`: `TypedDict` state carrying `ticket_text`, `ticket_type`, `rationale`, `response`, importing `TicketType` from `schemas` rather than redeclaring the literal. Native `typing.TypedDict`; no `typing_extensions` on 3.13.
+- [ ] `graph/prompts.py`: `CLASSIFIER_SYSTEM_PROMPT` (carries the default-to-`de-escalation` tie-break), `CARE_SYSTEM_PROMPT` (F3), `RESOLUTION_SYSTEM_PROMPT` (F4). Plain module constants so tests can import and assert on them.
 - [ ] `graph/nodes.py` → `classifier` node: `ChatOllama(...).with_structured_output(TicketClassification, include_raw=True)`, branching on `parsing_error` rather than `try/except` (F1)
 - [ ] `graph/nodes.py` → `classifier` guard: input under 3 words or empty skips classification and returns a clarification prompt
-- [ ] `graph/nodes.py` → `care_agent`: system prompt requires acknowledging stated frustration before any next step (F3)
-- [ ] `graph/nodes.py` → `resolution_agent`: system prompt restricted to "acknowledge and explain next steps", explicitly forbidden from confirming any action occurred (F4, top risk in the matrix)
+- [ ] `graph/nodes.py` → `care_agent`: applies `CARE_SYSTEM_PROMPT`, acknowledging stated frustration before any next step (F3)
+- [ ] `graph/nodes.py` → `resolution_agent`: applies `RESOLUTION_SYSTEM_PROMPT`, restricted to "acknowledge and explain next steps" and forbidden from confirming any action occurred (F4, top risk in the matrix)
 - [ ] `graph/build.py`: `StateGraph(State)`, `add_edge(START, "classifier")`, `add_conditional_edges("classifier", route_by_tone, ["care_agent", "resolution_agent"])`, both leaves to `END` (F2)
 - [ ] `graph/build.py` → `route_by_tone`: ambiguous or fallback classifications default to `de-escalation`
 - [ ] `main.py`: CLI loop replacing the hello-world; reads ticket text, prints the routed response, exits cleanly on EOF/Ctrl-C (F5)
 - [ ] `main.py`: Ollama startup health check with one retry and an actionable error naming the fix, never a raw traceback
 - [ ] `tests/test_classifier.py`: happy path for both labels, empty input, under-3-word input, malformed structured output, and the default-to-`de-escalation` fallback
 - [ ] `tests/test_graph.py`: each label reaches the correct leaf node; state is populated end to end; unreachable Ollama degrades to the fallback message
+- [ ] `tests/test_prompts.py`: assert `RESOLUTION_SYSTEM_PROMPT` still carries the no-completed-action constraint, so F4 is protected by a test rather than by memory
 - [ ] Confirm no test makes a live model call, so CI never depends on a running Ollama
 
 ---

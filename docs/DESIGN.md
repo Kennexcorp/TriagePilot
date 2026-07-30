@@ -72,7 +72,7 @@ Cutting memory, tools, HITL, and handoff keeps the MVP shippable in ~2 weeks by 
 Ticket text (CLI input)
         │
         ▼
-Classifier Node ── ChatOllama + Pydantic(TicketClassifier) ──► ticket_type
+Classifier Node ── ChatOllama + Pydantic(TicketClassification) ──► ticket_type
         │
         ▼
 Router (conditional edge on state["ticket_type"])
@@ -100,9 +100,13 @@ Care Agent   Resolution Agent    (each: ChatOllama + role-specific system prompt
 
 ### Classifier Design (core mechanism)
 
-`TicketClassifier` Pydantic schema:
-- `ticket_type: Literal["de-escalation", "resolution"]` — required.
+`TicketClassification` Pydantic schema, defined in `graph/schemas.py`:
+- `ticket_type: TicketType` — required, where `TicketType = Literal["de-escalation", "resolution"]`.
 - `rationale: str` — a short (≤20 word) justification the model must produce alongside the label, kept for tracing/debugging classification decisions (surfaced via LangSmith once observability ships).
+
+`TicketType` is declared once in `graph/schemas.py` and imported by `graph/state.py`, so the set of valid labels has a single definition. Adding a third category is then a one-line change rather than an edit that has to be kept in sync across two files.
+
+Note the deliberate separation between `graph/schemas.py` and `graph/state.py`: the Pydantic model is a runtime validation boundary that raises when the model returns something unexpected, while the `TypedDict` in `state.py` is a static typing artifact describing the channel LangGraph threads between nodes and is never validated at runtime. They are different kinds of contract and are kept in different files.
 
 **Edge-case strategy:**
 - Ambiguous tickets that contain both a frustration signal and a technical ask default to `de-escalation` — acknowledging tone first is the safer failure mode than jumping straight to resolution.
@@ -143,9 +147,12 @@ Care Agent   Resolution Agent    (each: ChatOllama + role-specific system prompt
   ├── main.py                  # CLI entrypoint / interactive loop
   ├── config.py                # pydantic-settings BaseSettings
   ├── graph/
-  │   ├── state.py             # TypedDict state schema
-  │   ├── nodes.py              # classifier, care_agent, resolution_agent
-  │   └── build.py              # StateGraph wiring
+  │   ├── __init__.py
+  │   ├── schemas.py           # Pydantic contracts, validated at runtime
+  │   ├── state.py             # TypedDict graph channel, not validated
+  │   ├── prompts.py           # system prompts, tuned independently of node logic
+  │   ├── nodes.py             # classifier, care_agent, resolution_agent
+  │   └── build.py             # StateGraph wiring
   ├── tests/
   │   ├── test_classifier.py
   │   ├── test_graph.py
@@ -159,6 +166,7 @@ Care Agent   Resolution Agent    (each: ChatOllama + role-specific system prompt
   ├── LICENSE
   └── pyproject.toml
   ```
+- **Module layering:** imports run strictly one way, so the package has no cycles: `prompts` imports nothing; `schemas` imports only Pydantic; `state` imports `schemas` (for `TicketType`); `nodes` imports `config`, `prompts`, `schemas`, `state`; `build` imports `state` and `nodes`; `main` imports `config` and `build`. Prompts and schemas sit at the bottom precisely because they are the parts iterated on most during evaluation, and nothing depends on them changing.
 - **Git hygiene:** Conventional commits — e.g. `feat: add ticket classifier node with Pydantic schema`, `fix: retry on malformed structured output`, `test: add 50-ticket labeled eval set`.
 - **Testing:** Unit tests mock `ChatOllama` responses so CI never calls a live model. The 50-ticket eval set runs as a separate, marked-slow integration test executed manually before release (not on every CI run), so accuracy numbers stay meaningful without slowing normal development.
 - **CI/CD:** GitHub Actions running `ruff` lint + `pytest` with an 80% coverage gate; coverage badge surfaced in the README. No deploy step — this ships as a local developer tool, not a hosted service.

@@ -27,6 +27,9 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Without this the pytest console script cannot import `graph` or `config`:
+# it only puts the test file's own directory on sys.path, not the project root.
+pythonpath = ["."]
 # Unknown markers fail rather than silently registering as a typo'd no-op.
 addopts = "--strict-markers"
 markers = [

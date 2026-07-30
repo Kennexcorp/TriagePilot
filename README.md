@@ -154,9 +154,12 @@ triagepilot/
 ├── main.py                  # CLI entrypoint / interactive loop
 ├── config.py                # pydantic-settings BaseSettings
 ├── graph/
-│   ├── state.py             # TypedDict state schema
-│   ├── nodes.py              # classifier, care_agent, resolution_agent
-│   └── build.py              # StateGraph wiring
+│   ├── __init__.py
+│   ├── schemas.py           # Pydantic contracts, validated at runtime
+│   ├── state.py             # TypedDict graph channel, not validated
+│   ├── prompts.py           # system prompts, tuned independently of node logic
+│   ├── nodes.py             # classifier, care_agent, resolution_agent
+│   └── build.py             # StateGraph wiring
 ├── tests/
 │   ├── test_classifier.py
 │   ├── test_graph.py
