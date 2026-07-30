@@ -6,15 +6,15 @@ Phases mirror the milestone tracker in [DESIGN.md](DESIGN.md). Rationale, requir
 
 ## P0 — Foundations
 
-- [x] Pin and install dependencies via `uv add` / `uv add --dev`: `langgraph`, `langchain-ollama`, `pydantic`, `pydantic-settings`; dev: `pytest`, `pytest-cov`, `ruff`
-- [x] Add `[tool.ruff]`, `[tool.pytest.ini_options]`, and `[tool.coverage.*]` (80% gate) to `pyproject.toml`
-- [x] Replace the placeholder `description` in `pyproject.toml`
-- [x] Add `.env.example` with `OLLAMA_MODEL`, `OLLAMA_HOST`, `REFUND_APPROVAL_THRESHOLD_USD`, `LOG_LEVEL`
-- [x] Add `LICENSE` (MIT) so the README link resolves
-- [x] Add `.env`, `.pytest_cache/`, `.coverage`, `.ruff_cache/` to `.gitignore`
-- [x] Correct the Python floor to 3.13+ in `README.md` and `DESIGN.md`
-- [x] Comment out the `docs/demo.gif` embed until the GIF exists
-- [x] Update the dependency shortlist in `DESIGN.md` to the pinned LangChain 1.x set
+- [X] Pin and install dependencies via `uv add` / `uv add --dev`: `langgraph`, `langchain-ollama`, `pydantic`, `pydantic-settings`; dev: `pytest`, `pytest-cov`, `ruff`
+- [X] Add `[tool.ruff]`, `[tool.pytest.ini_options]`, and `[tool.coverage.*]` (80% gate) to `pyproject.toml`
+- [X] Replace the placeholder `description` in `pyproject.toml`
+- [X] Add `.env.example` with `OLLAMA_MODEL`, `OLLAMA_HOST`, `REFUND_APPROVAL_THRESHOLD_USD`, `LOG_LEVEL`
+- [X] Add `LICENSE` (MIT) so the README link resolves
+- [X] Add `.env`, `.pytest_cache/`, `.coverage`, `.ruff_cache/` to `.gitignore`
+- [X] Correct the Python floor to 3.13+ in `README.md` and `DESIGN.md`
+- [X] Comment out the `docs/demo.gif` embed until the GIF exists
+- [X] Update the dependency shortlist in `DESIGN.md` to the pinned LangChain 1.x set
 
 ---
 
@@ -22,9 +22,9 @@ Phases mirror the milestone tracker in [DESIGN.md](DESIGN.md). Rationale, requir
 
 **Done when:** `uv run main.py` classifies a typed ticket and prints a tone-matched response, and `uv run pytest` passes with `ChatOllama` mocked throughout.
 
-- [x] `pyproject.toml`: add `pythonpath = ["."]` to `[tool.pytest.ini_options]`, without which `uv run pytest` cannot import `graph` or `config` (confirmed `ModuleNotFoundError`)
-- [ ] `config.py`: `pydantic-settings` `BaseSettings` reading `.env`, with `REFUND_APPROVAL_THRESHOLD_USD` typed numeric and `OLLAMA_HOST` validated as a URL. Done when an invalid value fails at import with a named field, not at first use.
-- [ ] `graph/__init__.py`: present, so `graph` is a regular package rather than a namespace package
+- [X] `pyproject.toml`: add `pythonpath = ["."]` to `[tool.pytest.ini_options]`, without which `uv run pytest` cannot import `graph` or `config` (confirmed `ModuleNotFoundError`)
+- [X] `config.py`: `pydantic-settings` `BaseSettings` reading `.env`, with `REFUND_APPROVAL_THRESHOLD_USD` typed numeric and `OLLAMA_HOST` validated as a URL. Done when an invalid value fails at import with a named field, not at first use.
+- [X] `graph/__init__.py`: present, so `graph` is a regular package rather than a namespace package
 - [ ] `graph/schemas.py`: `TicketType = Literal["de-escalation", "resolution"]` declared once here, plus `TicketClassification` Pydantic model with `ticket_type: TicketType` and `rationale: str` (≤20 words), both carrying `Field(description=...)`
 - [ ] `graph/state.py`: `TypedDict` state carrying `ticket_text`, `ticket_type`, `rationale`, `response`, importing `TicketType` from `schemas` rather than redeclaring the literal. Native `typing.TypedDict`; no `typing_extensions` on 3.13.
 - [ ] `graph/prompts.py`: `CLASSIFIER_SYSTEM_PROMPT` (carries the default-to-`de-escalation` tie-break), `CARE_SYSTEM_PROMPT` (F3), `RESOLUTION_SYSTEM_PROMPT` (F4). Plain module constants so tests can import and assert on them.
