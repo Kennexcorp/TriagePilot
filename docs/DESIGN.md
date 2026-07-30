@@ -106,7 +106,7 @@ Care Agent   Resolution Agent    (each: ChatOllama + role-specific system prompt
 
 `TicketType` is declared once in `graph/schemas.py` and imported by `graph/state.py`, so the set of valid labels has a single definition. Adding a third category is then a one-line change rather than an edit that has to be kept in sync across two files.
 
-Note the deliberate separation between `graph/schemas.py` and `graph/state.py`: the Pydantic model is a runtime validation boundary that raises when the model returns something unexpected, while the `TypedDict` in `state.py` is a static typing artifact describing the channel LangGraph threads between nodes and is never validated at runtime. They are different kinds of contract and are kept in different files.
+Note the deliberate separation between `graph/schemas.py` and `graph/state.py`: the Pydantic model is a runtime validation boundary that raises when the model returns something unexpected, while `TriageState`, the `TypedDict` in `state.py`, is a static typing artifact describing the channel LangGraph threads between nodes and is never validated at runtime. They are different kinds of contract and are kept in different files.
 
 **Edge-case strategy:**
 - Ambiguous tickets that contain both a frustration signal and a technical ask default to `de-escalation` — acknowledging tone first is the safer failure mode than jumping straight to resolution.
