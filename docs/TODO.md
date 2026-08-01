@@ -28,10 +28,10 @@ Phases mirror the milestone tracker in [DESIGN.md](DESIGN.md). Rationale, requir
 - [X] `graph/schemas.py`: `TicketType = Literal["de-escalation", "resolution"]` declared once here, plus `TicketClassification` Pydantic model with `ticket_type: TicketType` and `rationale: str` (≤20 words), both carrying `Field(description=...)`
 - [X] `graph/state.py`: `TriageState` `TypedDict` carrying `ticket_text`, `ticket_type`, `rationale`, `response`, importing `TicketType` from `schemas` rather than redeclaring the literal. Native `typing.TypedDict`; no `typing_extensions` on 3.13. Only `ticket_text` is required; the three fields written by later nodes are `NotRequired`.
 - [X] `graph/prompts.py`: `CLASSIFIER_SYSTEM_PROMPT` (carries the default-to-`de-escalation` tie-break), `CARE_SYSTEM_PROMPT` (F3), `RESOLUTION_SYSTEM_PROMPT` (F4), plus `NO_COMPLETED_ACTION_RULE` shared by both agent prompts so one test substring protects F4 on both paths. Plain `str` module constants, no imports, so tests can assert on them without loading langchain.
-- [ ] `graph/nodes.py` → `classifier` node: `ChatOllama(...).with_structured_output(TicketClassification, include_raw=True)`, branching on `parsing_error` rather than `try/except` (F1)
-- [ ] `graph/nodes.py` → `classifier` guard: input under 3 words or empty skips classification and returns a clarification prompt
-- [ ] `graph/nodes.py` → `care_agent`: applies `CARE_SYSTEM_PROMPT`, acknowledging stated frustration before any next step (F3)
-- [ ] `graph/nodes.py` → `resolution_agent`: applies `RESOLUTION_SYSTEM_PROMPT`, restricted to "acknowledge and explain next steps" and forbidden from confirming any action occurred (F4, top risk in the matrix)
+- [X] `graph/nodes.py` → `classifier` node: `ChatOllama(...).with_structured_output(TicketClassification, include_raw=True)`, branching on `parsing_error` rather than `try/except` (F1)
+- [X] `graph/nodes.py` → `classifier` guard: input under 3 words or empty skips classification and returns a clarification prompt
+- [X] `graph/nodes.py` → `care_agent`: applies `CARE_SYSTEM_PROMPT`, acknowledging stated frustration before any next step (F3)
+- [X] `graph/nodes.py` → `resolution_agent`: applies `RESOLUTION_SYSTEM_PROMPT`, restricted to "acknowledge and explain next steps" and forbidden from confirming any action occurred (F4, top risk in the matrix)
 - [ ] `graph/build.py`: `StateGraph(TriageState)`, `add_edge(START, "classifier")`, `add_conditional_edges("classifier", route_by_tone, ["care_agent", "resolution_agent"])`, both leaves to `END` (F2)
 - [ ] `graph/build.py` → `route_by_tone`: ambiguous or fallback classifications default to `de-escalation`
 - [ ] `main.py`: CLI loop replacing the hello-world; reads ticket text, prints the routed response, exits cleanly on EOF/Ctrl-C (F5)

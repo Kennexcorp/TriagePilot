@@ -203,7 +203,7 @@ ruff>=0.16.0               # linter + formatter
 
 **A note on LangChain 1.x.** LangChain and LangGraph reached 1.0 after this document was first drafted. The three APIs this architecture depends on (`StateGraph` over a `TypedDict`, `add_conditional_edges`, and `with_structured_output` over a Pydantic model) all survive the major version unchanged, so no rework is needed. Two 1.x details do affect the implementation:
 
-- Message classes import from `langchain.messages`, not `langchain_core.messages`.
+- Message classes import from `langchain_core.messages`. The `langchain.messages` re-export needs the `langchain` meta-package, which this project does not depend on: the pinned set is `langchain-core` 1.5.2 via `langchain-ollama` 1.1.0, and `import langchain` raises `ModuleNotFoundError` here (verified 2026-08-01).
 - `with_structured_output` accepts `include_raw=True`, which returns `{"raw", "parsed", "parsing_error"}` instead of raising on a malformed response. The Reliability guardrail's retry-then-fallback path is built on that branch rather than on `try/except`, which keeps the raw response available for the human-review flag.
 
 **Open questions resolved:** Default model choice is no longer deferred to P2. Benchmarking `llama3.2:3b` vs `qwen2.5:7b` on the eval set (accuracy + latency on target hardware) is an early milestone (see `docs/TODO.md`, P1.5), because the `.env.example` default, the ≤4s latency guardrail, and the README Results table all depend on its outcome. The comparison is recorded in `docs/MODEL_EVAL.md`.
