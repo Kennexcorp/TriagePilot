@@ -32,8 +32,8 @@ Phases mirror the milestone tracker in [DESIGN.md](DESIGN.md). Rationale, requir
 - [X] `graph/nodes.py` → `classifier` guard: input under 3 words or empty skips classification and returns a clarification prompt
 - [X] `graph/nodes.py` → `care_agent`: applies `CARE_SYSTEM_PROMPT`, acknowledging stated frustration before any next step (F3)
 - [X] `graph/nodes.py` → `resolution_agent`: applies `RESOLUTION_SYSTEM_PROMPT`, restricted to "acknowledge and explain next steps" and forbidden from confirming any action occurred (F4, top risk in the matrix)
-- [ ] `graph/build.py`: `StateGraph(TriageState)`, `add_edge(START, "classifier")`, `add_conditional_edges("classifier", route_by_tone, ["care_agent", "resolution_agent"])`, both leaves to `END` (F2)
-- [ ] `graph/build.py` → `route_by_tone`: ambiguous or fallback classifications default to `de-escalation`
+- [X] `graph/build.py`: `build_graph()` returning a compiled `StateGraph(TriageState)`, `add_edge(START, "classifier")`, `add_conditional_edges("classifier", route_by_tone, ["care_agent", "resolution_agent", END])`, both leaves to `END` (F2). `END` is in the path map because the guard path has already written a response and must not reach an agent.
+- [X] `graph/build.py` → `route_by_tone`: returns node names, not labels. Only `resolution` reaches `resolution_agent`; ambiguous and fallback classifications default to `care_agent`, and an absent `ticket_type` (the guard path) goes straight to `END`.
 - [ ] `main.py`: CLI loop replacing the hello-world; reads ticket text, prints the routed response, exits cleanly on EOF/Ctrl-C (F5)
 - [ ] `main.py`: Ollama startup health check with one retry and an actionable error naming the fix, never a raw traceback
 - [ ] `tests/test_classifier.py`: happy path for both labels, empty input, under-3-word input, malformed structured output, and the default-to-`de-escalation` fallback
