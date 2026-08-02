@@ -3,7 +3,7 @@
 from graph.build import build_graph
 
 BANNER = "TriagePilot. Type a ticket and press Enter. Ctrl-D or Ctrl-C to quit."
-PROMPT = "\nTicket: "
+PROMPT = "\n\n\nTicket: "
 
 
 def main() -> None:
