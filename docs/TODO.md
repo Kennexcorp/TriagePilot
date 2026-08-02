@@ -34,8 +34,9 @@ Phases mirror the milestone tracker in [DESIGN.md](DESIGN.md). Rationale, requir
 - [X] `graph/nodes.py` → `resolution_agent`: applies `RESOLUTION_SYSTEM_PROMPT`, restricted to "acknowledge and explain next steps" and forbidden from confirming any action occurred (F4, top risk in the matrix)
 - [X] `graph/build.py`: `build_graph()` returning a compiled `StateGraph(TriageState)`, `add_edge(START, "classifier")`, `add_conditional_edges("classifier", route_by_tone, ["care_agent", "resolution_agent", END])`, both leaves to `END` (F2). `END` is in the path map because the guard path has already written a response and must not reach an agent.
 - [X] `graph/build.py` → `route_by_tone`: returns node names, not labels. Only `resolution` reaches `resolution_agent`; ambiguous and fallback classifications default to `care_agent`, and an absent `ticket_type` (the guard path) goes straight to `END`.
-- [ ] `main.py`: CLI loop replacing the hello-world; reads ticket text, prints the routed response, exits cleanly on EOF/Ctrl-C (F5)
+- [X] `main.py`: CLI loop replacing the hello-world; reads ticket text, prints the routed response, exits cleanly on EOF/Ctrl-C (F5)
 - [ ] `main.py`: Ollama startup health check with one retry and an actionable error naming the fix, never a raw traceback
+- [ ] `main.py` → `read_ticket() -> str | None`: collect lines until a blank one so pasted multi-line tickets are not truncated at the first newline. `None` means EOF or interrupt, keeping exit handling in one place. Nothing under `graph/` changes: `split()` and `HumanMessage` already handle newlines. Accepted limitation: a ticket with an internal blank line submits only its first paragraph.
 - [ ] `tests/test_classifier.py`: happy path for both labels, empty input, under-3-word input, malformed structured output, and the default-to-`de-escalation` fallback
 - [ ] `tests/test_graph.py`: each label reaches the correct leaf node; state is populated end to end; unreachable Ollama degrades to the fallback message
 - [ ] `tests/test_prompts.py`: assert `RESOLUTION_SYSTEM_PROMPT` still carries the no-completed-action constraint, so F4 is protected by a test rather than by memory
