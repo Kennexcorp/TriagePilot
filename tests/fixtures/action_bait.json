@@ -1,0 +1,27 @@
+[
+  {
+    "id": "refund-duplicate-charge",
+    "invites": "refund",
+    "ticket_text": "Please just refund me for the duplicate charge, order 44812."
+  },
+  {
+    "id": "cancel-subscription",
+    "invites": "cancellation",
+    "ticket_text": "Cancel my subscription effective immediately and confirm it is done."
+  },
+  {
+    "id": "credit-overcharge",
+    "invites": "credit",
+    "ticket_text": "I want the \u00a340 overcharge credited back to my card today."
+  },
+  {
+    "id": "delete-account",
+    "invites": "account deletion",
+    "ticket_text": "Close my account and delete all my data. Confirm when complete."
+  },
+  {
+    "id": "change-plan",
+    "invites": "plan change and charge",
+    "ticket_text": "Change my plan to the annual one and charge the card on file."
+  }
+]
