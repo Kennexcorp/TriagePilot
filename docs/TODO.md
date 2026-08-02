@@ -1,6 +1,6 @@
 # TriagePilot — Implementation Checklist
 
-Phases mirror the milestone tracker in [DESIGN.md](DESIGN.md). Rationale, requirement IDs (F1–F5), and the risk matrix live there.
+Phases mirror the milestone tracker in [DESIGN.md](DESIGN.md). Rationale, requirement IDs (F1–F6), and the risk matrix live there.
 
 ---
 
@@ -37,9 +37,14 @@ Phases mirror the milestone tracker in [DESIGN.md](DESIGN.md). Rationale, requir
 - [X] `main.py`: CLI loop replacing the hello-world; reads ticket text, prints the routed response, exits cleanly on EOF/Ctrl-C (F5)
 - [ ] `main.py`: Ollama startup health check with one retry and an actionable error naming the fix, never a raw traceback
 - [ ] `main.py` → `read_ticket() -> str | None`: collect lines until a blank one so pasted multi-line tickets are not truncated at the first newline. `None` means EOF or interrupt, keeping exit handling in one place. Nothing under `graph/` changes: `split()` and `HumanMessage` already handle newlines. Accepted limitation: a ticket with an internal blank line submits only its first paragraph.
+- [ ] `tests/fixtures/action_bait.json`: the five tickets that invite an action claim (refund, cancellation, credit, account deletion, plan change). Pulled forward from P1.5 because F4 already failed on one of them, and a prompt fix with no rerunnable check is how it failed in the first place.
+- [ ] `graph/prompts.py`: rewrite `NO_COMPLETED_ACTION_RULE` to forbid **committing** to an action as well as claiming one. "We'll process your refund", "our team will review this", "I'll generate a reference number", and "we'll contact you with an update" are all violations. The current resolution prompt licenses this explicitly with "Describe what will happen and who does it, in the future tense", which is the loophole the observed failure went through.
+- [ ] `graph/prompts.py`: move the explicit list of banned phrasings into **both** agent prompts. It currently exists only in `RESOLUTION_SYSTEM_PROMPT`, and the F4 failure came from the care agent, which handles the large majority of traffic.
+- [ ] `graph/prompts.py`: add the F6 no-fabrication rule to both prompts. No invented UI steps, plan differences, policies, limits, or timelines; say what is not known and ask, rather than producing a plausible answer. The MVP has no product knowledge, so every product-specific claim is fabricated by construction.
+- [ ] Rerun the action-bait fixture after each prompt change above. Target: zero action claims and zero commitments across both agents. Record the number, do not eyeball the responses. This runner hits a live model, so it is marked `@pytest.mark.eval` like the P1.5 runner and stays out of the default `uv run pytest`. The CI-safe half is the `tests/test_prompts.py` substring assertion, which needs no model.
 - [ ] `tests/test_classifier.py`: happy path for both labels, empty input, under-3-word input, malformed structured output, and the default-to-`de-escalation` fallback
 - [ ] `tests/test_graph.py`: each label reaches the correct leaf node; state is populated end to end; unreachable Ollama degrades to the fallback message
-- [ ] `tests/test_prompts.py`: assert `RESOLUTION_SYSTEM_PROMPT` still carries the no-completed-action constraint, so F4 is protected by a test rather than by memory
+- [ ] `tests/test_prompts.py`: assert **both** agent prompts still carry the no-action rule (completions and commitments) and the F6 no-fabrication rule, so neither is protected by memory alone. Asserting on the resolution prompt only is what let the care agent drift.
 - [ ] Confirm no test makes a live model call, so CI never depends on a running Ollama
 
 ---
@@ -53,7 +58,10 @@ Phases mirror the milestone tracker in [DESIGN.md](DESIGN.md). Rationale, requir
 - [ ] `ollama pull llama3.2:3b` (not currently present locally)
 - [ ] Measure accuracy and end-to-end latency for `llama3.2:3b` and `qwen2.5:7b` on the same eval set and hardware
 - [ ] Measure the naive keyword/rule-based router baseline on the same eval set, for the README's comparison row
-- [ ] Measure the F4 safety check: % of resolution responses that imply a completed action, target 0%
+- [ ] Measure the F4 safety check across **both** agents, not resolution only: % of responses that claim a completed action or commit to a future one. Target 0%. The care agent handles most traffic and is where the observed failure came from.
+- [ ] Measure the F6 fabrication rate: % of responses asserting a product fact, UI step, policy, or limit the system has no source for. Target 0%.
+- [ ] Score the eval set **per group** (clearly-emotional, clearly-technical, ambiguous), never as one aggregate. A single accuracy number hides the observed failure mode, where near-perfect emotional recall masks technical tickets landing on `de-escalation`.
+- [ ] Test the classifier bias one variable at a time: tie-break wording, label order in the prompt, and the order of `Literal["de-escalation", "resolution"]`, which determines the JSON-schema enum order the constrained decoder sees. Change one, measure, keep or revert.
 - [ ] `docs/MODEL_EVAL.md`: record both models' numbers and the hardware they were measured on
 - [ ] Lock the winning model as the default in `.env.example`, `README.md`, and `DESIGN.md`; remove the ⚠️ provisional marker
 - [ ] Reconcile the ≤4s latency guardrail in `DESIGN.md` against the measured result, adjusting the doc if the target proves wrong rather than quietly missing it
